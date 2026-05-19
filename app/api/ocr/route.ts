@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { createClient } from "@/lib/supabase/server";
 
 // Buffer型のエイリアス（Node.js Buffer は ArrayBufferLike を使うが一貫して扱うためUint8Arrayを使用）
 type ImageBuffer = Uint8Array;
@@ -111,6 +112,22 @@ export async function POST(req: NextRequest) {
 
     const extractedText =
       response.content[0].type === "text" ? response.content[0].text : "";
+
+    // ログイン中のユーザーの場合はOCR結果をDBに保存
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("ocr_results").insert({
+          user_id: user.id,
+          filename: file.name,
+          extracted_text: extractedText,
+        });
+      }
+    } catch (dbError) {
+      // DB保存失敗はOCR結果の返却をブロックしない
+      console.error("DB保存エラー:", dbError);
+    }
 
     return NextResponse.json({ text: extractedText });
   } catch (error) {
