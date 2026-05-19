@@ -37,9 +37,13 @@ export default function CreditsClient({ email, balance, transactions, paymentSuc
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+        return;
       }
-    } catch {
-      alert("決済ページへの遷移に失敗しました");
+      // URLがない場合はAPIからのエラーメッセージを表示
+      alert(`エラー: ${data.error ?? "決済ページへの遷移に失敗しました"}`);
+    } catch (err) {
+      alert(`エラー: ${err instanceof Error ? err.message : "不明なエラーが発生しました"}`);
+    } finally {
       setLoading(null);
     }
   };
