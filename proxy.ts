@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // 認証不要のパス
-const PUBLIC_PATHS = ["/login", "/register"];
+const PUBLIC_PATHS = ["/login", "/register", "/auth/callback"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

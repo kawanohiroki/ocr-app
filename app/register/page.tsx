@@ -27,7 +27,14 @@ export default function RegisterPage() {
 
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({ email, password });
+    // メール確認後のリダイレクト先を明示的に指定（localhostではなく本番URLへ）
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
 
     if (error) {
       setError(error.message);
