@@ -6,9 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 
 interface HeaderProps {
   email: string;
+  credits: number;
 }
 
-export default function Header({ email }: HeaderProps) {
+export default function Header({ email, credits }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -40,8 +41,20 @@ export default function Header({ email }: HeaderProps) {
           </nav>
         </div>
 
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-gray-500 hidden sm:inline">{email}</span>
+        <div className="flex items-center gap-4 text-sm">
+          {/* クレジット残高表示 */}
+          <Link
+            href="/credits"
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+              credits === 0
+                ? "bg-red-50 text-red-600 hover:bg-red-100"
+                : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+            }`}
+          >
+            残り {credits} 回
+            {credits === 0 && <span className="ml-1">→ 購入</span>}
+          </Link>
+          <span className="text-gray-400 hidden sm:inline">{email}</span>
           <button
             onClick={handleLogout}
             className="text-gray-500 hover:text-gray-800 transition-colors"

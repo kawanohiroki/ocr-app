@@ -2,14 +2,21 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import OcrClient from "./OcrClient";
 
-// サーバーコンポーネントとしてユーザー情報を取得し、クライアントコンポーネントに渡す
 export default async function Home() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  return <OcrClient email={user.email ?? ""} />;
+  const { data: credits } = await supabase
+    .from("user_credits")
+    .select("balance")
+    .eq("user_id", user.id)
+    .single();
+
+  return (
+    <OcrClient
+      email={user.email ?? ""}
+      initialCredits={credits?.balance ?? 0}
+    />
+  );
 }

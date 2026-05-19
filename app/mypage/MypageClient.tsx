@@ -13,9 +13,10 @@ interface OcrResult {
 interface Props {
   email: string;
   initialHistory: OcrResult[];
+  credits: number;
 }
 
-export default function MypageClient({ email, initialHistory }: Props) {
+export default function MypageClient({ email, initialHistory, credits }: Props) {
   const [history, setHistory] = useState<OcrResult[]>(initialHistory);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -62,7 +63,7 @@ export default function MypageClient({ email, initialHistory }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header email={email} />
+      <Header email={email} credits={credits} />
 
       <main className="max-w-3xl mx-auto py-10 px-4">
         <h2 className="text-xl font-bold text-gray-800 mb-6">
