@@ -1,65 +1,213 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useRef, useCallback } from "react";
+
+type Status = "idle" | "loading" | "success" | "error";
 
 export default function Home() {
+  const [status, setStatus] = useState<Status>("idle");
+  const [extractedText, setExtractedText] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = useCallback(async (file: File) => {
+    const isHeic =
+      file.name.toLowerCase().endsWith(".heic") ||
+      file.name.toLowerCase().endsWith(".heif") ||
+      file.type === "image/heic" ||
+      file.type === "image/heif";
+
+    setFileName(file.name);
+
+    // HEICはブラウザがプレビュー表示できないためスキップ
+    if (!isHeic) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    } else {
+      setPreviewUrl(null);
+    }
+
+    setStatus("loading");
+    setExtractedText("");
+    setErrorMessage("");
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const res = await fetch("/api/ocr", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "OCR処理に失敗しました");
+      }
+
+      setExtractedText(data.text);
+      setStatus("success");
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "不明なエラーが発生しました");
+      setStatus("error");
+    }
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(extractedText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleReset = () => {
+    setStatus("idle");
+    setExtractedText("");
+    setErrorMessage("");
+    setPreviewUrl(null);
+    setFileName(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-3xl mx-auto">
+        {/* ヘッダー */}
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">書籍OCR</h1>
+          <p className="text-gray-500">画像をアップロードするとテキストを書き起こします</p>
+          <p className="text-xs text-gray-400 mt-1">JPEG・PNG・WEBP・HEIC 対応</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* アップロードエリア */}
+        <div
+          className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors mb-6 ${
+            isDragging
+              ? "border-blue-400 bg-blue-50"
+              : "border-gray-300 bg-white hover:border-blue-300 hover:bg-gray-50"
+          }`}
+          onClick={() => fileInputRef.current?.click()}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.heic,.heif"
+            className="hidden"
+            onChange={handleInputChange}
+          />
+
+          {previewUrl ? (
+            <div className="flex flex-col items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt="アップロードした画像"
+                className="max-h-64 rounded-lg object-contain shadow"
+              />
+              <p className="text-sm text-gray-400">別の画像を選ぶにはクリックまたはドロップ</p>
+            </div>
+          ) : fileName && (status === "loading" || status === "success") ? (
+            <div className="text-gray-500">
+              <p className="font-medium">{fileName}</p>
+              <p className="text-sm text-gray-400 mt-1">別の画像を選ぶにはクリックまたはドロップ</p>
+            </div>
+          ) : (
+            <div className="text-gray-400">
+              <svg
+                className="mx-auto mb-4 w-12 h-12"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              <p className="text-base font-medium">クリックまたはドラッグ＆ドロップ</p>
+            </div>
+          )}
         </div>
-      </main>
-    </div>
+
+        {/* ローディング */}
+        {status === "loading" && (
+          <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-gray-100 mb-4">
+            <div className="flex items-center justify-center gap-3 text-blue-600">
+              <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+              <span className="font-medium">OCR処理中...</span>
+            </div>
+          </div>
+        )}
+
+        {/* エラー */}
+        {status === "error" && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-5 mb-4">
+            <p className="text-red-700 font-medium">エラーが発生しました</p>
+            <p className="text-red-600 text-sm mt-1">{errorMessage}</p>
+          </div>
+        )}
+
+        {/* 結果 */}
+        {status === "success" && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+              <h2 className="font-semibold text-gray-700">書き起こし結果</h2>
+              <button
+                onClick={handleCopy}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+              >
+                {copied ? "コピーしました！" : "コピー"}
+              </button>
+            </div>
+            <pre className="p-5 text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed max-h-[500px] overflow-y-auto">
+              {extractedText}
+            </pre>
+          </div>
+        )}
+
+        {/* リセット */}
+        {(status === "success" || status === "error") && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={handleReset}
+              className="text-sm text-gray-500 hover:text-gray-700 underline"
+            >
+              別の画像を試す
+            </button>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
